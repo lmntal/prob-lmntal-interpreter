@@ -1,0 +1,28 @@
+prob_interpreter.use.
+
+ret = prob_interpreter.run(
+  model_type="CTMC",
+  {init={a,a,b,b,a_count(2),b_count(2),ab_count(0)}},
+  {rules=[
+    {
+      a, b, a_count(A), b_count(B), ab_count(AB) :- 
+        An=A-1, Bn=B-1, ABn=AB+1 | 
+        ab, a_count(An), b_count(Bn), ab_count(ABn),    rule_name("a_b2ab"), rate(100.0).
+      ab, a_count(A), b_count(B), ab_count(AB) :-
+        An=A+1, Bn=B+1, ABn=AB-1 | 
+        a, b, a_count(An), b_count(Bn), ab_count(ABn),  rule_name("ab2a_b"), rate(50.0).
+      a, a_count(A) :-        
+        An=A-1 |
+        a_count(An),                                    rule_name("a2none"), rate(5.0).
+    }
+  ]},
+  {preds=[
+    label("a_count2", {a_count(2) :- .}),
+    label("a_count1", {a_count(1) :- .}),
+    label("a_count0", {a_count(0) :- .}),
+    label("b_count2", {b_count(2) :- .}),
+    label("b_count1", {b_count(1) :- .}),
+    label("b_count0", {b_count(0) :- .}),
+    label("a_count0_and_ab_count0", {a_count(0), ab_count(0) :- .})
+  ]}
+).

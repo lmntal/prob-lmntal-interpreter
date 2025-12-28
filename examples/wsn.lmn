@@ -1,0 +1,17 @@
+prob_interpreter.use.
+
+ret = prob_interpreter.run(
+  model_type="MDP",
+  {init={{source, data, p(L)}, {dest, p(L)}}},
+  {rules=[
+    {
+      {source, data, p(L)}, {dest, p(L)} :- {source, p(L)}, {dest, data, p(L)},         rule_name("send_succ"), action("send"), weight(4.0).
+      {source, data, p(L)}, {dest, p(L)} :- {source, data, failed, p(L)}, {dest, p(L)}, rule_name("send_fail"), action("send"), weight(1.0).
+      {source, data, p(L)}, {dest, p(L)} \ :-                                           rule_name("wait"), action("wait"), weight(1.0).
+      {source, data, failed, p(L)}, {dest, p(L)} :- {source, data, p(L)}, {dest, p(L)}, rule_name("reset"), action("reset"), weight(1.0).
+    }
+  ]},
+  {preds=[
+    label("finished", {{source, p(L)}, {dest, data, p(L)} :- .})
+  ]}
+).

@@ -1,0 +1,189 @@
+{
+module(prob_interpreter).
+
+prob_interpreter.use :- 
+  set.use, state_space.use,
+  n(0), // 状態数
+  t(0), // 遷移数
+  transitions=[].
+
+
+/**
+  * 初期化
+  */
+prob_interpreter_run@@Ret = prob_interpreter.run(model_type="DTMC", {init={$ini[]}}, {rules=$l[]}, Labels) :-
+    Ret = run({init={$ini[]}}, {rules=[
+        {rule_name(X), weight(W), reward(R) :- string(X), float(W), float(R) |.}, // for DTMC
+        {rule_name(X), weight(W) :- string(X), float(W) |.}
+        |$l[]
+    ]}, Labels).
+
+prob_interpreter_run@@Ret = prob_interpreter.run(model_type="MDP", {init={$ini[]}}, {rules=$l[]}, Labels) :-
+    Ret = run({init={$ini[]}}, {rules=[
+          {rule_name(X), action(A), weight(W), reward(R) :- string(X), string(A), float(W), float(R) |.}, // for MDP
+          {rule_name(X), action(A), weight(W) :- string(X), string(A), float(W) |.}
+        |$l[]
+    ]}, Labels).
+
+prob_interpreter_run@@Ret = prob_interpreter.run(model_type="CTMC", {init={$ini[]}}, {rules=$l[]}, Labels) :-
+    Ret = run({init={$ini[]}}, {rules=[
+        {rule_name(X), rate(W) :- string(X), float(W) |.} // for CTMC
+        |$l[]
+    ]}, Labels).
+
+run@@Ret = run({init={$ini[]}}, PRs, Labels), n($n) :- $nn = $n+1 |
+    Ret = exp0(PRs, Labels, s(ID, {$ini[]}),
+        state_space.state_map_find(state_space.state_map_init, {$ini[]}, ID), 
+        set.init, set.init), 
+	      n($nn).
+
+
+// 不要なアトム等の削除のための処理
+garbage({@rules}) :- .
+garbage=[{@rules}|X] :- garbage=X.
+garbage=[] :- .
+
+
+/**
+  * ラベル付け
+  */
+
+labeling@@Ret = labeling(PRs, {preds=$labels[]}, [s($id, {$src[]})|Stk], Map, Ss, Ts) :-
+    int($id) |
+    Ret = labeling2(PRs, {preds=$labels[]}, [s($id, {$src[]})|Stk], Map, Ss, Ts, 
+            s($id, {$src[]}), restLabels=$labels[]).
+
+// ラベルリストが空のとき，書き換え実行へ
+labeling2@@Ret = labeling2({rules=$l[]}, Labels, S0, Map, Ss, Ts, 
+            s($id, {$src[]}), restLabels=[]) :-
+    int($id) |
+    Ret = exp_pop_rules({rules=$l[]}, Labels, restRules=$l[], S0, Map, Ss, Ts).
+
+// ラベルリストが空でないとき，先頭のラベルを取り出す
+labeling2@@Ret = labeling2(PRs, Labels, S0, Map, Ss, Ts, 
+            s($id, {$src[]}), restLabels=[label(Label, RuleMem)|Rest]) :-
+    int($id) |
+    Ret = labeling_react(PRs, Labels, S0, Map, Ss, Ts, 
+            s($id, {$src[]}), restLabels=Rest, Suc, Label),
+    Suc = state_space.react_nd_set(RuleMem, {$src[]}, garbage).
+
+// ラベル用ルールが発火しないとき
+labeling_react@@Ret = labeling_react(PRs, Labels, S0, Map, Ss, Ts, 
+            Src, restLabels=Rest, [], Label) :-
+    string(Label) |
+    Ret = labeling2(PRs, Labels, S0, Map, Ss, Ts, 
+            Src, restLabels=Rest).
+
+// ラベル用ルールが発火するとき
+labeling_react@@Ret = labeling_react(PRs, Labels, S0, Map, Ss, Ts, 
+            s($id, {$src[]}), restLabels=Rest, [{$dest[]}|Sucs], Label) :-
+    int($id) |
+    Ret = labeling2(PRs, Labels, S0, Map, Ss, Ts, 
+            s($id, {$src[]}), restLabels=Rest),
+    label($id, Label), garbage=Sucs.
+
+
+
+/**
+  * 書き換え実行
+  */
+
+exp0@@Ret = exp0(PRs, Labels, S0, Map, Ss, Ts), S0=s($id, {$ini[]}) :- int($id) |
+    Ret = exp(PRs, Labels, [s($id, {$ini[]})], Map, set.insert(Ss, $id), Ts), ini($id).
+
+// 状態スタックが空のときに終了
+exp_@@Ret = exp({$rules[]}, {preds=$labels[]}, [], Map, Ss, Ts), ini(I) :-
+    Ret = state_space(I, Map, Ss, Ts).
+
+// 優先度付きルールのコピー
+exp@@Ret = exp(PRs, Labels, S0, Map, Ss, Ts) :-
+    Ret = labeling(PRs, Labels, S0, Map, Ss, Ts).
+
+// ルール集合が空でないとき，先頭のルール集合を取り出す
+exp_pop_rules@@Ret = exp_pop_rules(PRs, Labels, restRules=[X|Rest], S0, Map, Ss, Ts) :-
+    Ret = exp_react(PRs, Labels, restRules=Rest, S0, Map, Ss, Ts, rs(X)).
+
+// ルール集合が空のとき，スタックの次の状態から探索を行う
+exp_pop_rules_@@Ret = exp_pop_rules(PRs, Labels, restRules=[], [s($id, {$src[]})|Stk], Map, Ss, Ts) :-
+    int($id) |
+    Ret = exp(PRs, Labels, Stk, Map, Ss, Ts).
+
+// 書き換え実行
+exp_react@@Ret = exp_react(PRs, Labels, RestRules, S0, Map, Ss, Ts, rs(Rs)), S0=[s($id, {$src[]})|Stk] :-  
+    int($id) |
+    Ret = suc(PRs, Labels, RestRules, Stk, Suc, p($id, {$src[]}), Map, Ss, Ts, from_exp),
+    Suc = state_space.react_nd_set(Rs, {$src[]}, garbage).
+
+
+/**
+  * 状態空間の探索
+  */
+
+// 遷移先がないとき，次の優先度のルール集合を試す
+suc_@@Ret = suc(PRs, Labels, RestRules, Stk, [], p($id, {$src[]}), Map, Ss, Ts, from_exp) :- 
+    int($id) |
+    Ret = exp_pop_rules(PRs, Labels, RestRules, [s($id, {$src[]})|Stk], Map, Ss, Ts).
+
+// 遷移先があるとき，state_map の更新を行う
+suc@@Ret = suc(PRs, Labels, RestRules, Stk, [{$dest[]}|Suc], Src, Map, Ss, Ts, React) :-
+    unary(React) |
+    M = state_space.state_map_find(Map, {$dest[]}, ID),
+    Ret = ns0(PRs, Labels, RestRules, Stk, Suc, Src, p(ID, {$dest[]}), M, Ss, Ts).
+
+// 現在の優先度のルールの集合で全ての遷移先を探索し終えたとき
+// スタックの先頭状態の探索を行う
+suc_after_update@@Ret = suc(PRs, Labels, restRules=Rest, Stk, [], p($id, {$src[]}), Map, Ss, Ts, after_update) :- 
+    int($id) |
+    Ret = exp(PRs, Labels, Stk, Map, Ss, Ts), garbage=Rest.
+
+
+/**
+  * 状態集合の更新
+  */
+
+// 状態の検索
+ns0@@Ret = ns0(PRs, Labels, RestRules, Stk, Suc, p($s, Src), p($d, Dst), Map, Ss, Ts), transitions=Tr :- 
+    int($s), int($d) |
+    Ret = ns(PRs, Labels, RestRules, Stk, Suc, Res, p($s, Src), p($d, Dst), Map, S, Ts), transitions=['.'($s, $d)|Tr],
+    S = set.find(Ss, $d, Res).
+
+// 既に状態集合に含まれている場合
+// 遷移集合のみ更新
+ns@@Ret = ns(PRs, Labels, RestRules, Stk, Suc, some, p($s, Src), p($d, Dst), Map, Ss, Ts) :-
+    int($s), int($d) |
+    Ret = nt(PRs, Labels, RestRules, Stk, Suc, Res, p($s, Src), p($d, Dst), Map, Ss, T),
+    T = set.find(Ts, '.'($s, $d), Res).
+
+// まだ状態集合に含まれていない場合
+// 状態集合と遷移集合を更新
+ns_@@Ret = ns(PRs, Labels, RestRules, Stk, Suc, none, p($s, Src), p($d, Dst), Map, Ss, Ts), n($n), t($t) :-
+    int($s), int($d), $nn=$n+1, $tt=$t+1|
+    Ret = suc(PRs, Labels, RestRules, [s($d, Dst)|Stk], Suc, p($s, Src), Map, S, T, after_update),
+    S = set.insert(Ss, $d), T = set.insert(Ts, '.'($s, $d)),
+    n($nn), t($tt).
+
+
+/**
+  * 遷移集合の更新
+  */
+
+// 既に遷移集合に含まれている場合
+nt@@Ret = nt(PRs, Labels, RestRules, Stk, Suc, some, Src, p($d, {$dest[]}), Map, Ss, Ts) :-
+    int($d) |
+    Ret = suc(PRs, Labels, RestRules, Stk, Suc, Src, Map, Ss, Ts, after_update).
+
+// まだ遷移集合に含まれていない場合
+nt_@@Ret = nt(PRs, Labels, RestRules, Stk, Suc, none, p($s, Src), p(D, {$dest[]}), Map, Ss, Ts), t($t) :-
+    int($s), $tt=$t+1 |
+    Ret = suc(PRs, Labels, RestRules, Stk, Suc, p($s, Src), Map, Ss, set.insert(Ts, '.'($s, D)), after_update), t($tt).
+
+
+/**
+  * 状態遷移系の出力
+  */
+
+Ret = state_space(I, M, S, T) :-
+Ret = ss(I, M, set.to_list(S), T).
+Ret = ss(I, M, [$x|S], T) :- int($x) |
+Ret = ss(I, state_space.state_map_find(M, $x, Res), S, T), state($x, Res).
+}

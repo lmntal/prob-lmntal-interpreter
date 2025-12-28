@@ -1,0 +1,22 @@
+prob_interpreter.use.
+
+ret = prob_interpreter.run(
+  model_type="DTMC",
+  {init={coin=[], toss, toss, toss.}},
+  {rules=[
+    {
+      coin=H, toss :- coin=[h|H],             rule_name("head"), weight(1.0), reward(1.0).
+      coin=H, toss :- coin=[t|H],             rule_name("tail"), weight(1.0), reward(1.0).
+      coin=[h,h,h] :- coin=[h], toss, toss,   rule_name("head2"), weight(1.0).
+      coin=[t,t,t] :- coin=[t], toss, toss,   rule_name("tail2"), weight(1.0).
+    }
+  ]},
+  {preds=[
+    label("one", {coin=[t,h,h] :- .}),
+    label("two", {coin=[h,t,h] :- .}),
+    label("three", {coin=[t,t,h] :- .}),
+    label("four", {coin=[h,h,t] :- .}),
+    label("five", {coin=[t,h,t] :- .}),
+    label("six", {coin=[h,t,t] :- .})
+  ]}
+).

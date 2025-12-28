@@ -1,0 +1,16 @@
+prob_interpreter.use.
+
+ret = prob_interpreter.run(
+  model_type="DTMC",
+  {init={c(l,r),c(l,r),c(l,r).}},
+  {rules=[
+    {
+      l(X),r(Y) :- lr(X,Y),   rule_name("hold"), weight(1.0).
+    }
+  ]},
+  {preds=[
+    label("ring_1", {c(X,lr(Y)),c(Y,lr(Z)),c(Z,lr(X)) :- .}),
+    label("ring_2", {c(X,lr(Y)),c(Y,lr(X)),c(Z,lr(Z)) :- .}),
+    label("ring_3", {c(X,lr(X)),c(Y,lr(Y)),c(Z,lr(Z)) :- .})
+  ]}
+).

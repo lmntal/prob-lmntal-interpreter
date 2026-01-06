@@ -12,4 +12,4 @@ LMNtal のメタインタプリタをベースにしています。
 ## 使い方
 
 1. SLIM のオプション `-I` で `prob_interpreter` モジュールが定義されたファイルのあるディレクトリを指定します．
-2. LMNtal プログラム内で `-use prob_interpreter.use` によりモジュールを呼び出します．
+2. LMNtal プログラム内で `prob_interpreter.use` によりモジュールを呼び出します．

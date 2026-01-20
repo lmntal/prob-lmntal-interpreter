@@ -14,4 +14,4 @@ LMNtal のメタインタプリタをベースにしています。
 1. LMNtal プログラム内で `prob_interpreter.use` によりモジュールを呼び出します．
 2. SLIM のオプション `-I` で `prob_interpreter` モジュールが定義されたファイルのあるディレクトリを指定します．
 3. slim で通常実行を行います．(e.g. `slim --use-builtin-rule path/to/module examples/die.lmn`)
-4. [prob-lmntal-interpreter](https://github.com/lmntal/prob-lmntal-interpreter) を使用して，実行結果から確率モデル検査ツール [PRISM](https://www.prismmodelchecker.org/) の入力形式 Explicit モデルへの変換が行えます．
+4. [prob-lmntal-translator](https://github.com/lmntal/prob-lmntal-translator) を使用して，実行結果から確率モデル検査ツール [PRISM](https://www.prismmodelchecker.org/) の入力形式 Explicit モデルへの変換が行えます．

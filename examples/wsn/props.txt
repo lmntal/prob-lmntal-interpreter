@@ -1,0 +1,14 @@
+// N ステップ後に "finished" の状態にいる確率の上限
+Pmax=? [F<=2 "finished"]
+Pmax=? [F<=3 "finished"]
+Pmax=? [F<=4 "finished"]
+Pmax=? [F<=5 "finished"]
+Pmax=? [F<=6 "finished"]
+Pmax=? [F<=7 "finished"]
+Pmax=? [F<=8 "finished"]
+Pmax=? [F<=9 "finished"]
+Pmax=? [F<=10 "finished"]
+
+// N ステップ後に "finished" の状態にいる確率の下限
+Pmin=? [F<=2 "finished"]
+Pmin=? [F<=10 "finished"]
